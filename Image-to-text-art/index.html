@@ -1,1 +1,345 @@
-hiiiii
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>image To Text Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #111;
+            --primary: #00ff9d; /* Matrix Green */
+            --accent: #ff0055;  /* Cyberpunk Pink */
+            --info: #0ea5e9;    /* Help Blue */
+            --text: #e0e0e0;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Fira Code', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        /* --- THE DASHBOARD --- */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        @media (min-width: 800px) {
+            .dashboard { grid-template-columns: 300px 1fr; }
+        }
+
+        /* --- LEFT PANEL: CONTROLS --- */
+        .controls {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            height: fit-content;
+        }
+
+        .control-group { margin-bottom: 20px; }
+        .control-group label { display: block; margin-bottom: 5px; font-size: 0.8rem; color: var(--primary); }
+        
+        /* Custom Sliders */
+        input[type=range] {
+            width: 100%; height: 6px; background: #333; border-radius: 5px; -webkit-appearance: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 15px; height: 15px; background: var(--primary); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* Upload Button */
+        .file-upload {
+            background: linear-gradient(45deg, #222, #333);
+            border: 2px dashed var(--accent);
+            color: var(--accent);
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s;
+            font-weight: bold;
+            display: block;
+        }
+        .file-upload:hover { background: #000; box-shadow: 0 0 15px var(--accent); }
+        input[type="file"] { display: none; }
+
+        /* Buttons */
+        .btn-action {
+            width: 100%; padding: 12px; margin-top: 10px;
+            border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-family: inherit;
+            transition: 0.2s;
+        }
+        .btn-copy { background: var(--primary); color: #000; }
+        .btn-copy:hover { box-shadow: 0 0 15px var(--primary); }
+        
+        .btn-invert { background: #333; color: #fff; border: 1px solid #555; }
+        .btn-invert.active { background: var(--accent); border-color: var(--accent); }
+
+        /* Help Button Style */
+        .btn-help { background: var(--info); color: #fff; margin-top: 20px; }
+        .btn-help:hover { box-shadow: 0 0 15px var(--info); transform: translateY(-2px); }
+
+        /* --- RIGHT PANEL: PREVIEW --- */
+        .preview-area {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* PHONE SIMULATOR */
+        .phone-mockup {
+            width: 320px; /* Standard Mobile Width */
+            background: #000;
+            border: 4px solid #333;
+            border-radius: 20px;
+            padding: 15px;
+            min-height: 500px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .phone-mockup::before {
+            content: 'Mobile Preview';
+            position: absolute; top: 0; left: 0; width: 100%;
+            text-align: center; font-size: 0.7rem; color: #555; padding: 5px; background: #111;
+        }
+
+        #output {
+            font-family: 'Courier New', Courier, monospace; /* Essential for alignment */
+            font-size: 8px; /* Small font to fit details */
+            line-height: 0.65; /* Squeezed line height */
+            white-space: pre-wrap; /* Allows text to wrap naturally if needed, but we control width */
+            color: #fff;
+            margin-top: 20px;
+            word-break: break-all;
+        }
+
+        /* --- CANVAS (HIDDEN) --- */
+        canvas { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Image To Text Art Converter <span style="font-size:0.5em; color:var(--accent)">v3.0</span></h1>
+
+    <div class="dashboard">
+        <div class="controls">
+            <div class="control-group">
+                <label class="file-upload">
+                    📂 UPLOAD IMAGE
+                    <input type="file" id="imgInput" accept="image/*">
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>Resolution (Width): <span id="valRes">28</span> chars</label>
+                <input type="range" id="resSlider" min="20" max="100" value="28">
+                <small style="color:#777">Keep 25-30 for WhatsApp Mobile</small>
+            </div>
+
+            <div class="control-group">
+                <label>Contrast Boost: <span id="valCon">1.0</span></label>
+                <input type="range" id="contrastSlider" min="1" max="3" step="0.1" value="1">
+            </div>
+
+            <div class="control-group">
+                <label>Brightness: <span id="valBri">1.0</span></label>
+                <input type="range" id="brightSlider" min="0.5" max="2" step="0.1" value="1">
+            </div>
+
+            <button class="btn-action btn-invert" id="invertBtn" onclick="toggleInvert()">🌗 Invert Colors</button>
+            <p style="font-size:0.7rem; color:#666; text-align:center;">Use Invert for Light Mode apps</p>
+
+            <button class="btn-action btn-copy" onclick="copyText()">📋 COPY TEXT ART</button>
+
+            <a href="https://www.websheru.online/2026/01/image-to-text-pixel-art-converter-tool.html" target="_blank" style="text-decoration:none; width:100%;">
+                <button class="btn-action btn-help">❓ GET HELP </button>
+            </a>
+
+        </div>
+
+        <div class="preview-area">
+            <div class="phone-mockup">
+                <div id="output">Upload an image to start...</div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const imgInput = document.getElementById('imgInput');
+        const output = document.getElementById('output');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Sliders
+        const resSlider = document.getElementById('resSlider');
+        const contrastSlider = document.getElementById('contrastSlider');
+        const brightSlider = document.getElementById('brightSlider');
+        
+        // Displays
+        const valRes = document.getElementById('valRes');
+        const valCon = document.getElementById('valCon');
+        const valBri = document.getElementById('valBri');
+        
+        let currentImg = null;
+        let isInverted = false;
+
+        // "ASCII" Ramps - High Precision
+        // Darkest (@) to Lightest (.)
+        const density = "Ñ@#W$9876543210?!abc;:+=-,._ "; 
+        
+        // --- EVENT LISTENERS ---
+        imgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => { currentImg = img; process(); };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        [resSlider, contrastSlider, brightSlider].forEach(el => {
+            el.addEventListener('input', () => {
+                updateLabels();
+                process();
+            });
+        });
+
+        function updateLabels() {
+            valRes.innerText = resSlider.value;
+            valCon.innerText = contrastSlider.value;
+            valBri.innerText = brightSlider.value;
+        }
+
+        function toggleInvert() {
+            isInverted = !isInverted;
+            document.getElementById('invertBtn').classList.toggle('active');
+            process();
+        }
+
+        // --- THE CORE PROCESSING ENGINE ---
+        function process() {
+            if(!currentImg) return;
+
+            const w = parseInt(resSlider.value);
+            // Aspect Ratio Magic: 0.45 correction factor for text height
+            const h = Math.floor(currentImg.height * (w / currentImg.width) * 0.45);
+
+            canvas.width = w;
+            canvas.height = h;
+            ctx.drawImage(currentImg, 0, 0, w, h);
+
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+
+            // Get Settings
+            const contrast = parseFloat(contrastSlider.value);
+            const brightness = parseFloat(brightSlider.value);
+
+            let text = "";
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const i = (y * w + x) * 4;
+                    
+                    let r = data[i];
+                    let g = data[i+1];
+                    let b = data[i+2];
+                    let a = data[i+3];
+
+                    // 1. Handle Transparency (PNG)
+                    if (a < 50) {
+                        text += "⠀"; // BRAILLE PATTERN BLANK (Magic Space)
+                        continue;
+                    }
+
+                    // 2. Apply Brightness
+                    r *= brightness; g *= brightness; b *= brightness;
+
+                    // 3. Apply Contrast
+                    // Formula: factor * (color - 128) + 128
+                    const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+                    r = factor * (r - 128) + 128;
+                    g = factor * (g - 128) + 128;
+                    b = factor * (b - 128) + 128;
+
+                    // Clamp values 0-255
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    // 4. Calculate Grayscale
+                    let avg = (r + g + b) / 3;
+
+                    // 5. Invert Logic
+                    if (isInverted) avg = 255 - avg;
+
+                    // 6. Map to Character
+                    const len = density.length;
+                    const charIdx = Math.floor(map(avg, 0, 255, len - 1, 0));
+                    
+                    const char = density[charIdx];
+
+                    // Replace standard space with Braille Space for WhatsApp safety
+                    if (char === ' ') text += "⠀";
+                    else text += char;
+                }
+                text += "\n";
+            }
+
+            output.innerText = text;
+        }
+
+        // Math helper
+        function map(s, a1, a2, b1, b2) {
+            return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
+        }
+
+        function copyText() {
+            if(!output.innerText || output.innerText.includes("Upload")) {
+                alert("Image to upload kar bhai!"); return;
+            }
+            navigator.clipboard.writeText(output.innerText).then(() => {
+                alert("COPIED! \n\nTip: WhatsApp/Insta par paste karte waqt 'Read More' na aaye isliye width 30 se kam rakhein.");
+            });
+        }
+    </script>
+</body>
+</html>
